@@ -26,13 +26,13 @@
 7. Watch the video with translated audio.
 
 # Supported Languages
-Hindi 🇮🇳
-Kannada 🇮🇳
-Telugu 🇮🇳
-Tamil 🇮🇳
-Malayalam 🇮🇳
-Marathi 🇮🇳
-Spanish 🇪🇸
-French 🇫🇷
-Korean 🇰🇷
-English 🇬🇧
+1. Hindi 🇮🇳
+2. Kannada 🇮🇳
+3. Telugu 🇮🇳
+4. Tamil 🇮🇳
+5. Malayalam 🇮🇳
+6. Marathi 🇮🇳
+7. Spanish 🇪🇸
+8. French 🇫🇷
+9. Korean 🇰🇷
+10. English 🇬🇧

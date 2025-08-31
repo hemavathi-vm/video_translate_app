@@ -32,7 +32,7 @@
 4. Tamil 🇮🇳
 5. Malayalam 🇮🇳
 6. Marathi 🇮🇳
-7.Spanish 🇪🇸
+7. Spanish 🇪🇸
 8. French 🇫🇷
 9. Korean 🇰🇷
 10. English 🇬🇧

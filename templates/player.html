@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Player - Translate Audio</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 18px; }
+    .controls { margin-top: 12px; }
+    .btn { padding: 8px 12px; border-radius: 6px; background: #1976d2; color: white; border: none; cursor: pointer; }
+    .btn:disabled { background: #999; cursor: not-allowed; }
+    .small { font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h2>Original Video</h2>
+  <video id="video" width="900" controls crossorigin="anonymous">
+    <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/mp4">
+    Your browser does not support video.
+  </video>
+
+  <div class="controls">
+    <button class="btn" id="openTranslate">Translate Audio</button>
+    <span id="status" class="small" style="margin-left:12px"></span>
+  </div>
+
+  <!-- translate modal (simple) -->
+  <div id="modal" style="display:none; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.4);">
+    <div style="background:white; width:420px; margin:80px auto; padding:18px; border-radius:8px;">
+      <h3>Translate audio</h3>
+      <div>
+        <label>From (detected):</label>
+        <input id="fromLang" type="text" readonly placeholder="auto-detect">
+      </div>
+      <div style="margin-top:8px;">
+        <label>To:</label>
+        <select id="toLang">
+          {% for code, info in supported_langs.items() %}
+            <option value="{{ code }}">{{ info.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="margin-top:12px;">
+        <button id="doTranslate" class="btn">Translate</button>
+        <button id="cancelTranslate" style="margin-left:8px;">Cancel</button>
+      </div>
+      <div id="modalStatus" class="small" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- translated audio track used for dub playback -->
+  <audio id="dubAudio" preload="auto"></audio>
+
+  <script>
+    const openTranslate = document.getElementById("openTranslate");
+    const modal = document.getElementById("modal");
+    const cancelTranslate = document.getElementById("cancelTranslate");
+    const doTranslate = document.getElementById("doTranslate");
+    const fromLang = document.getElementById("fromLang");
+    const toLang = document.getElementById("toLang");
+    const modalStatus = document.getElementById("modalStatus");
+    const status = document.getElementById("status");
+    const video = document.getElementById("video");
+    const dubAudio = document.getElementById("dubAudio");
+    const filename = "{{ filename }}";
+
+    openTranslate.addEventListener("click", () => {
+      modal.style.display = "block";
+      modalStatus.textContent = "";
+      fromLang.value = "detecting...";
+      // We can call backend to pre-detect language if desired. For now, we show "auto-detect".
+      fromLang.value = "Auto (will detect)";
+    });
+    cancelTranslate.addEventListener("click", () => modal.style.display = "none");
+
+    doTranslate.addEventListener("click", async () => {
+      const to = toLang.value;
+      modalStatus.textContent = "Working — this may take some time for long videos...";
+      doTranslate.disabled = true;
+
+      try {
+        const res = await fetch("/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: filename, to: to })
+        });
+        const js = await res.json();
+        if (!js.ok) {
+          modalStatus.textContent = "Error: " + (js.error || "unknown");
+          doTranslate.disabled = false;
+          return;
+        }
+        modalStatus.textContent = "Translation complete. Detected source: " + js.detected_source_language;
+        status.textContent = "Loaded translation: " + to;
+        // add captions track
+        // Remove any existing translated track first
+        const existingTrack = document.querySelector("#video track[data-generated='true']");
+        if (existingTrack) existingTrack.remove();
+
+        const track = document.createElement("track");
+        track.kind = "subtitles";
+        track.label = to;
+        track.srclang = to;
+        track.src = js.vtt;
+        track.setAttribute("data-generated", "true");
+        track.default = true;
+        document.getElementById("video").appendChild(track);
+
+        // load track (some browsers require loading)
+        track.addEventListener("load", () => {
+          track.mode = "showing";
+        });
+
+        // load TTS mp3 if available
+        if (js.mp3) {
+          dubAudio.src = js.mp3;
+        } else {
+          dubAudio.src = "";
+        }
+
+        // When user chooses to play dub, we will mute video and play dubAudio in sync
+        // For immediate testing we can start playing dub if video playing
+        modal.style.display = "none";
+        doTranslate.disabled = false;
+
+        // Setup sync events: when video plays, play dubAudio if present
+        video.addEventListener("play", () => {
+          if (dubAudio.src) {
+            dubAudio.currentTime = video.currentTime;
+            dubAudio.play().catch(e => console.log(e));
+            video.muted = true;
+          }
+        });
+        video.addEventListener("pause", () => {
+          if (dubAudio.src) dubAudio.pause();
+        });
+        video.addEventListener("seeked", () => {
+          if (dubAudio.src) dubAudio.currentTime = video.currentTime;
+        });
+        video.addEventListener("timeupdate", () => {
+          if (dubAudio.src && Math.abs(video.currentTime - dubAudio.currentTime) > 0.3) {
+            dubAudio.currentTime = video.currentTime;
+          }
+        });
+
+      } catch (err) {
+        modalStatus.textContent = "Unexpected error: " + err;
+        doTranslate.disabled = false;
+      }
+    });
+  </script>
+
+  <br><br><a href="/">⬅ Back to Upload</a>
+</body>
+</html>

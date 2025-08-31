@@ -1,0 +1,9 @@
+flask
+moviepy
+openai-whisper
+googletrans==4.0.0-rc1
+gTTS
+ffmpeg-python
+whisper @ git+https://github.com/openai/whisper.git
+deep-translator
+
